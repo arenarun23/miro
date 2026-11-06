@@ -148,7 +148,7 @@
       const T = THEMES[v], short = SHORT[hard ? 'hard' : 'easy'];
       const box = G.h('div', { class: 'fitbox mazebox' }), cv = G.h('canvas', { class: 'maze', role: 'img', 'aria-label': '미로. 손가락으로 길을 따라 ' + T.w + '에게 가요' });
       box.append(cv);
-      const mv = G.h('span', {}, '👣 0'), kindTag = G.h('span', { class: 'kindtag' }, '');
+      const musicBtn = G.h('button', { class: 'btn alt hintbtn', 'aria-pressed': 'true' }, ''), mv = G.h('span', {}, '👣 0'), kindTag = G.h('span', { class: 'kindtag' }, '');
       let hintBtn = null, hintLeft = 0, hintUsed = 0, hintTimer = 0, steps = 0, done = false;
       let c = 0, r = 0, open = null, pos = [0, 0], trail = [[0, 0]], hintPath = null, cell = 0, best = 1, start = [0, 0], goal = [0, 0], kind = KINDS[0], shape = SHAPES[0], ins = null;
       const ask = G.h('div', { class: 'hint must' }, `${T.p} 길을 따라 ${T.g} ${T.w}에게 가요`);
@@ -231,7 +231,7 @@
         }
       }
       function finish() {
-        done = true; clearTimeout(hintTimer);
+        done = true; clearTimeout(hintTimer); G.music.stop();            // 음악은 잠깐 멈추고 박수 소리를 들려준다
         const ratio = steps / Math.max(1, best);
         let st = ratio <= 1.5 ? 3 : ratio <= 2.5 ? 2 : 1;
         st = Math.max(1, st - (hintUsed ? 1 : 0));
@@ -254,13 +254,17 @@
         hintUsed++; G.sfx.tap(); hintPath = route(open, c, r, pos, goal); draw();
         clearTimeout(hintTimer); hintTimer = setTimeout(() => { hintPath = null; draw(); }, 2500);
       } }, '💡 힌트');
-      root.append(ask, G.h('div', { class: 'hud' }, mv, hintBtn, kindTag), box);
+      root.append(ask, G.h('div', { class: 'hud' }, mv, hintBtn, musicBtn, kindTag), box);
+
+      const showMusic = () => { musicBtn.textContent = G.music.isOn() ? '🎵 음악' : '🔇 음악'; musicBtn.setAttribute('aria-pressed', String(G.music.isOn())); };
+      musicBtn.addEventListener('click', () => { G.sfx.tap(); G.music.setOn(!G.music.isOn()); showMusic(); });
+      showMusic(); G.music.play(hard);
 
       make(); draw();
       const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => draw()) : null;
       if (ro) ro.observe(box);
       requestAnimationFrame(() => { make(); draw(); });          // 상자 크기가 정해진 뒤 한 번 더 맞춘다
-      return () => { removeEventListener('keydown', onKey); clearTimeout(hintTimer); if (ro) ro.disconnect(); };
+      return () => { removeEventListener('keydown', onKey); clearTimeout(hintTimer); G.music.stop(); if (ro) ro.disconnect(); };
     },
   });
 })();
