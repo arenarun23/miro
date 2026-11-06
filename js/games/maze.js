@@ -60,8 +60,8 @@
       const ask = G.h('div', { class: 'hint must' }, `${T.p} 길을 따라 ${T.g} ${T.w}에게 가요`);
 
       function make() {
-        const W = box.clientWidth || 600, H = box.clientHeight || 400, s = Math.min(W, H) / short;
-        c = Math.max(3, Math.floor(W / s)); r = Math.max(3, Math.floor(H / s));
+        const bw = box.clientWidth || 600, bh = box.clientHeight || 400, s = Math.min(bw, bh) / short;
+        c = Math.max(3, Math.floor(bw / s)); r = Math.max(3, Math.floor(bh / s));
         c = Math.min(c, Math.ceil(r * 1.8)); r = Math.min(r, Math.ceil(c * 1.8));   // 너무 길쭉한 미로는 피한다
         open = build(c, r); pos = [0, 0]; trail = [[0, 0]]; steps = 0; hintPath = null; done = false;
         best = route(open, c, r, [0, 0], [c - 1, r - 1]).length - 1;
@@ -69,9 +69,9 @@
       }
       function draw() {
         if (!open) return;
-        const W = box.clientWidth, H = box.clientHeight;
-        if (!W || !H) return;
-        cell = Math.floor(Math.min(W / c, H / r)); const w = cell * c, h = cell * r;
+        const bw = box.clientWidth, bh = box.clientHeight;      // (방향 상수 W 와 이름이 겹치면 벽이 잘못 그려진다)
+        if (!bw || !bh) return;
+        cell = Math.floor(Math.min(bw / c, bh / r)); const w = cell * c, h = cell * r;
         const dpr = Math.min(window.devicePixelRatio || 1, 3);
         cv.style.width = w + 'px'; cv.style.height = h + 'px';
         if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
