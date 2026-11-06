@@ -1,0 +1,70 @@
+:root{
+  --bg:#fff7e6; --ink:#4a3b2a; --card:#fff; --line:#e9dcc3;
+  --pink:#ffd6e0; --sky:#cfe8ff; --orange:#ffe0b8; --mint:#c9f2e0; --lemon:#fff4b8; --lilac:#e3d6ff; --peach:#ffd9c9;
+  --btn:#ff9f43; --btn-ink:#fff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{font-size:clamp(13px,min(2.95vh,4.9vw),22px)}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:'Jua','Gowun Dodum','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  -webkit-user-select:none;user-select:none;overscroll-behavior:none}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;touch-action:manipulation}
+#app{height:100vh;height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+
+/* 위쪽 바 */
+#bar{display:flex;align-items:center;gap:.6rem;padding:.4rem .7rem;min-height:3rem}
+#title{flex:1;margin:0;text-align:center;font-size:1.5rem;font-weight:400}
+.right{display:flex;align-items:center;gap:.5rem}
+.stars{background:#fff;border:2px solid var(--line);border-radius:2rem;padding:.15rem .7rem;font-size:1.1rem;min-width:3.6rem;text-align:center}
+.round{width:2.8rem;height:2.8rem;min-width:44px;min-height:44px;border-radius:50%;background:#fff;border:2px solid var(--line);font-size:1.3rem;display:grid;place-items:center;box-shadow:0 2px 0 var(--line)}
+.round:active{transform:translateY(2px);box-shadow:none}
+body[data-view=home] #btnHome{visibility:hidden}
+
+#stage{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;padding:0 .8rem .8rem}
+
+/* 게임 공통 */
+.game{flex:1;min-height:0;display:flex;flex-direction:column;gap:.6rem;position:relative}
+.hint{text-align:center;font-size:1.15rem;min-height:1.4rem}
+.fitbox{flex:1;min-height:0;container-type:size;display:grid;place-items:center}
+.sq{width:min(100cqw,100cqh);height:min(100cqw,100cqh)}
+.grid{--g:.6rem;--s:calc(min(100cqw/var(--c),100cqh/var(--r)) - var(--g));display:grid;gap:var(--g);
+  grid-template-columns:repeat(var(--c),var(--s));grid-template-rows:repeat(var(--r),var(--s));justify-content:center;align-content:center}
+.btn{background:var(--btn);color:var(--btn-ink);border-radius:2rem;padding:.4rem 1.4rem;min-height:44px;font-size:1.2rem;box-shadow:0 4px 0 #d9822b}
+.btn:active{transform:translateY(3px);box-shadow:none}
+.btn.alt{background:#fff;color:var(--ink);border:2px solid var(--line);box-shadow:0 4px 0 var(--line)}
+.shake{animation:shake .35s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+
+/* 결과 */
+.over{position:absolute;inset:0;background:rgba(255,247,230,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;z-index:50;text-align:center;animation:fade .25s}
+.over h2{margin:0;font-size:2.2rem;font-weight:400}
+.over .bigstars{font-size:3rem;letter-spacing:.2rem}
+.over .row{display:flex;gap:.8rem}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.confetti{position:absolute;top:-2rem;font-size:1.8rem;animation:fall linear forwards;pointer-events:none;z-index:51}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.confetti{display:none}}
+@media (max-height:460px){#bar{min-height:2.4rem;padding:.2rem .6rem}.round{width:2.4rem;height:2.4rem}#stage{padding-bottom:.4rem}.hint{display:none}}
+
+/* 난이도·새로고침 막대 */
+.subbar{display:flex;gap:.5rem;justify-content:center;align-items:center;flex-wrap:wrap;padding:0 0 .5rem}
+.mode{min-height:44px;padding:.2rem .9rem;border-radius:2rem;background:#fff;border:2px solid var(--line);font-size:1.05rem;box-shadow:0 3px 0 var(--line)}
+.mode[aria-pressed=true]{background:var(--btn);color:#fff;border-color:var(--btn);box-shadow:0 3px 0 #d9822b}
+.mode.refresh{background:#e8f6ff;border-color:#bcdcf5;box-shadow:0 3px 0 #bcdcf5;margin-left:.6rem}
+.mode:active{transform:translateY(2px);box-shadow:none}
+.hint.must{display:block!important}
+@media (max-height:460px){.subbar{padding-bottom:.25rem;gap:.35rem}.mode{padding:.1rem .7rem;font-size:.95rem}.mode.refresh{margin-left:.3rem}}
+
+/* AIEDU 허브로 가는 아이콘 — 모든 서비스 공통 모양·위치: 페이지 왼쪽 위(body 첫 요소). 앱마다 이 자리를 비워 둔다 */
+.aiedu-home{position:absolute;left:max(8px,env(safe-area-inset-left,0px));top:max(8px,env(safe-area-inset-top,0px));z-index:1000;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:linear-gradient(160deg,#ffe58f,#ffb08e);border:2px solid #fff;box-shadow:0 2px 0 rgba(74,52,38,.22);text-decoration:none;-webkit-tap-highlight-color:transparent}
+.aiedu-home svg{width:30px;height:30px;display:block}
+.aiedu-home:active{transform:translateY(2px);box-shadow:none}
+.aiedu-home:focus-visible{outline:3px solid #f08a00;outline-offset:2px}
+#bar{padding-left:calc(.7rem + 46px)}
+
+/* 미로 찾기 */
+.mazebox{position:relative}
+.maze{display:block;touch-action:none;border-radius:.8rem;outline:3px solid #8a5a3a;outline-offset:0;background:#fffdf5;-webkit-user-select:none;user-select:none}
+.hintbtn{min-height:44px;padding:.2rem 1rem;font-size:1.05rem}
+.hud{display:flex;justify-content:center;align-items:center;gap:1.2rem;font-size:1.3rem}
+#bar{padding-left:calc(.7rem + 46px)}
