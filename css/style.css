@@ -64,7 +64,8 @@ body[data-view=home] #btnHome{visibility:hidden}
 
 /* 미로 찾기 */
 .mazebox{position:relative}
-.maze{display:block;touch-action:none;border-radius:.8rem;outline:3px solid #8a5a3a;outline-offset:0;background:#fffdf5;-webkit-user-select:none;user-select:none}
+.maze{display:block;touch-action:none;-webkit-user-select:none;user-select:none}
 .hintbtn{min-height:44px;padding:.2rem 1rem;font-size:1.05rem}
-.hud{display:flex;justify-content:center;align-items:center;gap:1.2rem;font-size:1.3rem}
+.kindtag{font-size:1rem;opacity:.75}
+.hud{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:.4rem 1.2rem;font-size:1.3rem}
 #bar{padding-left:calc(.7rem + 46px)}
