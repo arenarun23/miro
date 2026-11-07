@@ -103,6 +103,7 @@
 
   G.start = (g, forceV) => {
     cleanup(); current = g; remember(g.id);
+    window.aieduLog && aieduLog('start', g.id);   // 이용 기록(익명, 게임 이름만)
     document.body.dataset.view = 'game';
     G.$('#title').textContent = g.name;
     const root = G.h('div', { class: 'game' });
@@ -114,6 +115,7 @@
 
   // 결과 창: { stars:1~3, text }
   G.win = ({ stars = 1, text = '', ask = null } = {}) => {
+    window.aieduLog && aieduLog('finish', current && current.id);
     const bonus = G.level || 0;
     G.addStars(stars + bonus);
     G.sfx.win(); G.speak('참 잘했어요!');
