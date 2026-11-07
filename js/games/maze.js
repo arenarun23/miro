@@ -142,12 +142,15 @@
   }
 
   // 난이도 3단계: short=사각형 짧은 쪽 칸 수, n=도형 한 변 칸 수, minCell=손가락 기준 최소 칸 크기(px)
-  // 방해꾼: 길을 돌아다니다가 닿으면 처음부터 다시 시작. ms=한 칸 가는 시간, chase=가까우면 쫓아올 확률
+  // 방해꾼(닿으면 처음부터): foes=[최소,최대] 마릿수, ms=한 칸 가는 시간, guards=길목을 지키는 방해꾼 최대 수, chasers=쫓아오는 방해꾼 수
+  //  - wander 🐛: 길을 아무 데나 돌아다닌다   - guard 🕷️: 길목(갈림길)에서 옆길을 드나들며 길을 막는다(옆길에 들어간 틈에 지나간다)
+  //  - chase 🦂: 가까이 있으면 쫓아온다
   const LV = [
-    { short: 6, n: 11, minCell: 26, braid: 0.5, foes: 0 },
-    { short: 11, n: 17, minCell: 26, braid: 0, foes: 1, ms: 720, chase: 0, icon: '👻' },
-    { short: 15, n: 23, minCell: 20, braid: 0, foes: 3, ms: 470, chase: 0.45, icon: '👹' },
+    { short: 6, n: 11, minCell: 26, braid: 0.5, foes: [2, 3], ms: 900, guards: 0, chasers: 0, chase: 0 },
+    { short: 11, n: 17, minCell: 26, braid: 0, foes: [5, 6], ms: 650, guards: 3, chasers: 0, chase: 0 },
+    { short: 15, n: 23, minCell: 20, braid: 0, foes: [7, 8], ms: 450, guards: 5, chasers: 2, chase: 0.6 },
   ];
+  const FOE = { wander: '🐛', guard: '🕷️', chase: '🦂' };
   const LVNAME = ['🙂 쉬워요', '🔥 어려워요', '💀 매우 어려워요'];
 
   // 어느 칸에서 각 칸까지의 길 거리
@@ -173,9 +176,8 @@
       box.append(cv, flash);
       const tool = (icon, label, fn) => G.h('button', { class: 'btn alt tool', 'aria-label': label, onclick: fn }, icon, G.h('span', { class: 'lbl' }, ' ' + label));
       const mv = G.h('span', {}, '👣 0'), hitTag = G.h('span', { title: '방해꾼에게 부딪힌 횟수' }, '💥 0'), kindTag = G.h('span', { class: 'kindtag' }, '');
-      hitTag.hidden = !L.foes;
       let hintUsed = 0, hintTimer = 0, steps = 0, done = false, hits = 0, lock = 0, inv = 0, foeTimer = 0, raf = 0, flashTimer = 0, drag = false;
-      let c = 0, r = 0, open = null, pos = [0, 0], trail = [[0, 0]], hintPath = null, cell = 0, best = 1, start = [0, 0], goal = [0, 0], kind = KINDS[0], shape = SHAPES[0], ins = null, foes = [];
+      let distS = new Map(), c = 0, r = 0, open = null, pos = [0, 0], trail = [[0, 0]], hintPath = null, cell = 0, best = 1, start = [0, 0], goal = [0, 0], kind = KINDS[0], shape = SHAPES[0], ins = null, foes = [];
       const ask = G.h('div', { class: 'hint must' }, `${T.p} 길을 따라 ${T.g} ${T.w}에게 가요`);
       const now = () => performance.now();
 
@@ -208,34 +210,64 @@
       // ───── 방해꾼 ─────
       function spawnFoes(cells) {
         foes = [];
-        if (!L.foes) return;
-        const want = level === 1 ? (cells.length > 150 ? 2 : 1) : (cells.length > 260 ? 4 : 3), dist = distFrom(open, c, r, start);
+        const key = (p) => p[1] * c + p[0], total = L.foes[0] + ((Math.random() * (L.foes[1] - L.foes[0] + 1)) | 0);
+        const dist = distFrom(open, c, r, start), R = route(open, c, r, start, goal), onRoute = new Set(R.map(key)); distS = dist;
         const isEnd = (p) => (p[0] === goal[0] && p[1] === goal[1]) || (p[0] === start[0] && p[1] === start[1]);
-        let pool = cells.filter((p) => !isEnd(p) && dist.get(p[1] * c + p[0]) >= Math.max(6, best * 0.3));
-        if (pool.length < want) pool = cells.filter((p) => !isEnd(p)).sort((p, q) => dist.get(q[1] * c + q[0]) - dist.get(p[1] * c + p[0])).slice(0, Math.max(want, 4));
-        for (const p of G.shuffle(pool)) {
-          if (foes.length >= want) break;
-          if (foes.every((f) => Math.abs(f.home[0] - p[0]) + Math.abs(f.home[1] - p[1]) >= 4)) foes.push({ home: p.slice(), cell: p.slice(), prev: p.slice(), last: null, t0: 0 });
+        const nbrs = (p) => [N, E, S, W].filter((d) => open[p[1]][p[0]] & d).map((d) => [p[0] + DX[d], p[1] + DY[d]]);
+        const taken = new Set(), mk = (kind, path, idx) => { const p = path[idx]; return { kind, cell: p.slice(), prev: p.slice(), last: null, t0: 0, home: p.slice(), path, idx, idx0: idx, dir: 1 }; };
+        // 1) 길목 지킴이: 갈림길 B 에서 [옆길 깊숙이 … B … 길 앞쪽 몇 칸] 을 왕복한다
+        const cand = []; for (let i = 3; i < R.length - 3; i++) if (nbrs(R[i]).some((n) => !onRoute.has(key(n)))) cand.push(i);
+        const gi = [];
+        for (const i of G.shuffle(cand)) {
+          if (gi.length >= Math.min(L.guards, total)) break;
+          if (gi.some((j) => Math.abs(j - i) < 6)) continue;                       // 지킴이 사이에 숨 돌릴 길을 둔다
+          const side = G.pick(nbrs(R[i]).filter((n) => !onRoute.has(key(n)))), branch = [side], seen = new Set([key(R[i]), key(side)]), depth = 2 + ((Math.random() * 3) | 0);
+          while (branch.length < depth) {
+            const nx = nbrs(branch[branch.length - 1]).filter((n) => !onRoute.has(key(n)) && !seen.has(key(n)));
+            if (!nx.length) break; const n = G.pick(nx); branch.push(n); seen.add(key(n));
+          }
+          const ahead = []; for (let j = 1, k = 1 + ((Math.random() * 3) | 0); j <= k && i + j < R.length - 2; j++) ahead.push(R[i + j]);
+          const path = branch.slice().reverse().concat([R[i]], ahead);
+          if (path.some((p) => isEnd(p) || taken.has(key(p)) || dist.get(key(p)) < 4)) continue;
+          path.forEach((p) => taken.add(key(p))); gi.push(i); foes.push(mk('guard', path, (Math.random() * path.length) | 0));
+        }
+        // 2) 쫓는 방해꾼과 떠돌이: 출발에서 멀리, 서로 떨어뜨려 놓는다(떠돌이는 길 위에 더 자주 놓아 길을 막게 한다)
+        let pool = cells.filter((p) => !isEnd(p) && !taken.has(key(p)) && dist.get(key(p)) >= Math.max(6, best * 0.25));
+        if (pool.length < total) pool = cells.filter((p) => !isEnd(p) && !taken.has(key(p)) && dist.get(key(p)) >= 4);
+        const onR = G.shuffle(pool.filter((p) => onRoute.has(key(p)))), offR = G.shuffle(pool.filter((p) => !onRoute.has(key(p))));
+        const order = []; for (let i = 0; i < Math.max(onR.length, offR.length); i++) { if (level >= 1 && i < onR.length) order.push(onR[i]); if (i < offR.length) order.push(offR[i]); }   // 길 위와 옆길에 번갈아 놓는다(너무 빽빽하지 않게)
+        if (level < 1) order.sort(() => Math.random() - 0.5);
+        const far = (p, k) => foes.every((f) => Math.abs(f.home[0] - p[0]) + Math.abs(f.home[1] - p[1]) >= k);
+        const chasers = Math.min(L.chasers, Math.max(0, total - foes.length));
+        const kinds = Array(chasers).fill('chase').concat(Array(Math.max(0, total - foes.length - chasers)).fill('wander'));
+        for (const k of [3, 2, 1, 0]) for (const p of order) {
+          if (!kinds.length) break; if (taken.has(key(p)) || !far(p, k)) continue;
+          taken.add(key(p)); foes.push(mk(kinds.shift(), [p], 0));
         }
       }
       function foeStep() {
         if (done || !open) return;
         const t = now();
         for (const f of foes) {
-          const here = f.cell, nb = [];
-          for (const d of [N, E, S, W]) if (open[here[1]][here[0]] & d) {
-            const n = [here[0] + DX[d], here[1] + DY[d]];
-            if ((n[0] === goal[0] && n[1] === goal[1]) || (n[0] === start[0] && n[1] === start[1])) continue;   // 출발·도착 칸에는 못 들어간다
-            nb.push(n);
-          }
-          if (!nb.length) continue;
           let nx = null;
-          if (L.chase && Math.random() < L.chase) {                    // 가까이 있으면 쫓아온다
-            const pa = route(open, c, r, here, pos);
-            if (pa && pa.length > 1 && pa.length <= 11 && nb.some((n) => n[0] === pa[1][0] && n[1] === pa[1][1])) nx = pa[1];
+          if (f.kind === 'guard') {                                    // 정해진 길을 왕복한다
+            if (f.idx + f.dir < 0 || f.idx + f.dir >= f.path.length) f.dir = -f.dir;
+            f.idx += f.dir; nx = f.path[f.idx];
+          } else {
+            const here = f.cell, nb = [];
+            for (const d of [N, E, S, W]) if (open[here[1]][here[0]] & d) {
+              const n = [here[0] + DX[d], here[1] + DY[d]];
+              if ((n[0] === goal[0] && n[1] === goal[1]) || (distS.get(n[1] * c + n[0]) || 0) < 3) continue;   // 도착 칸과 출발 칸 둘레(2칸)에는 못 들어간다
+              nb.push(n);
+            }
+            if (!nb.length) continue;
+            if (f.kind === 'chase' && Math.random() < L.chase) {        // 가까이 있으면 쫓아온다
+              const pa = route(open, c, r, here, pos);
+              if (pa && pa.length > 1 && pa.length <= 11 && nb.some((n) => n[0] === pa[1][0] && n[1] === pa[1][1])) nx = pa[1];
+            }
+            if (!nx) { const fw = nb.filter((n) => !(f.last && n[0] === f.last[0] && n[1] === f.last[1])); nx = G.pick(fw.length ? fw : nb); }   // 되돌아가지 않고 돌아다닌다
           }
-          if (!nx) { const fw = nb.filter((n) => !(f.last && n[0] === f.last[0] && n[1] === f.last[1])); nx = G.pick(fw.length ? fw : nb); }   // 되돌아가지 않고 돌아다닌다
-          f.last = here; f.prev = here; f.cell = nx; f.t0 = t;
+          f.last = f.cell; f.prev = f.cell; f.cell = nx; f.t0 = t;
         }
         check();
       }
@@ -243,7 +275,7 @@
       function hit() {                                               // 부딪히면 처음부터 다시
         hits++; hitTag.textContent = '💥 ' + hits; G.sfx.bad();
         pos = start.slice(); trail = [start.slice()]; steps = 0; mv.textContent = '👣 0'; hintPath = null; drag = false;
-        for (const f of foes) { f.cell = f.home.slice(); f.prev = f.home.slice(); f.last = null; f.t0 = 0; }
+        for (const f of foes) { f.idx = f.idx0; f.dir = 1; f.cell = f.home.slice(); f.prev = f.home.slice(); f.last = null; f.t0 = 0; }
         inv = now() + 1500; lock = now() + 700;                      // 잠깐은 다시 부딪히지 않고, 손가락 입력도 잠깐 무시한다
         flash.hidden = false; clearTimeout(flashTimer); flashTimer = setTimeout(() => { flash.hidden = true; }, 900);
         draw();
@@ -290,7 +322,7 @@
           const u = reduce || !f.t0 ? 1 : Math.min(1, (t - f.t0) / (L.ms * 0.85));
           const m = mid([f.prev[0] + (f.cell[0] - f.prev[0]) * u, f.prev[1] + (f.cell[1] - f.prev[1]) * u]);
           x.globalAlpha = t < inv ? 0.5 : 1;
-          disc(m, '#ffd6d6', '#e53935', 0.4); x.fillText(L.icon, m[0], m[1] + cell * 0.03);
+          disc(m, '#ffd6d6', '#e53935', 0.4); x.fillText(FOE[f.kind], m[0], m[1] + cell * 0.03);
           x.globalAlpha = 1;
         }
         const p = mid(pos); disc(p, '#ffffff', '#ff7aa8'); x.fillText(T.p, p[0], p[1] + cell * 0.03);
@@ -345,7 +377,7 @@
       showMusic(); G.music.play(level >= 1, level === 2 ? 1.1 : 1);
 
       make(); draw();
-      if (L.foes) { foeTimer = setInterval(foeStep, L.ms); raf = requestAnimationFrame(loop); }
+      foeTimer = setInterval(foeStep, L.ms); raf = requestAnimationFrame(loop);
       const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => draw()) : null;
       if (ro) ro.observe(box);
       requestAnimationFrame(() => { make(); draw(); });          // 상자 크기가 정해진 뒤 한 번 더 맞춘다
