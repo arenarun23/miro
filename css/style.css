@@ -65,7 +65,25 @@ body[data-view=home] #btnHome{visibility:hidden}
 /* 미로 찾기 */
 .mazebox{position:relative}
 .maze{display:block;touch-action:none;-webkit-user-select:none;user-select:none}
-.hintbtn{min-height:44px;padding:.2rem 1rem;font-size:1.05rem}
 .kindtag{font-size:1rem;opacity:.75}
-.hud{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:.4rem 1.2rem;font-size:1.3rem}
 #bar{padding-left:calc(.7rem + 46px)}
+
+/* 미로 화면: 세로 화면은 위쪽 메뉴, 가로 화면은 왼쪽 메뉴 + 오른쪽에 미로를 크게 */
+.mz{flex:1;min-height:0;display:flex;flex-direction:column;gap:.45rem}
+.mz .side{display:flex;flex-direction:column;align-items:center;gap:.4rem}
+.mz .modes{display:flex;flex-wrap:wrap;gap:.35rem;justify-content:center}
+.mz .modes .mode{padding:.2rem .7rem;font-size:max(14px,.98rem)}
+.mz .tools{display:flex;gap:.4rem;justify-content:center}
+.tool{min-height:44px;min-width:44px;padding:.2rem .8rem;font-size:1.05rem;display:inline-flex;align-items:center;justify-content:center}
+.mz .hint{min-height:0;margin:0}
+.mz .info{display:flex;flex-wrap:wrap;gap:.1rem .9rem;justify-content:center;font-size:1.1rem}
+.flash{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(255,90,90,.93);color:#fff;border-radius:1.4rem;padding:.6rem 1.2rem;font-size:max(18px,1.5rem);white-space:nowrap;pointer-events:none;z-index:5;box-shadow:0 4px 0 rgba(0,0,0,.18);animation:shake .35s}
+.flash[hidden]{display:none}
+@media (min-aspect-ratio:11/10) and (min-width:560px){
+  .mz{flex-direction:row;align-items:stretch;gap:.8rem}
+  .mz .side{flex:0 0 clamp(11rem,20vw,14rem);justify-content:flex-start;overflow-y:auto;gap:.5rem}
+  .mz .modes{flex-direction:column;align-items:stretch;width:100%}
+  .mz .modes .mode{width:100%;text-align:center;font-size:max(14px,1.05rem)}
+  .mz .tools .lbl{display:none}
+  .mz .info{flex-direction:column;align-items:center;gap:.1rem}
+}

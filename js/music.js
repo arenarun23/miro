@@ -98,8 +98,8 @@
   const hat = (c, d, t, v) => nz(c, d, t, 0.04, v, 'highpass', 7200);
 
   // 한 칸(16분음표)을 시각 t 에 연주한다. bar = 곡의 마디 번호(0~15), s = 마디 안 칸(0~15)
-  function playStep(c, dest, tr, bar, s, t) {
-    const sd = 60 / tr.bpm / 4, b = tr.bars[bar], g = b.g, hard = tr.hard, ch = b.chord;
+  function playStep(c, dest, tr, bar, s, t, rate) {
+    const sd = 60 / (tr.bpm * (rate || 1)) / 4, b = tr.bars[bar], g = b.g, hard = tr.hard, ch = b.chord;
     // 멜로디
     const n = b.ev[s];
     if (n) {
@@ -146,13 +146,13 @@
     const c = ctxReady(); if (!c) return;                                        // 손가락이 닿기 전엔 브라우저가 소리를 막는다 → 첫 터치 뒤에 시작
     const comp = c.createDynamicsCompressor(), master = c.createGain(); master.gain.setValueAtTime(0.0001, c.currentTime); master.gain.linearRampToValueAtTime(0.55, c.currentTime + 0.25);
     master.connect(comp); comp.connect(c.destination);
-    S = { c, comp, master, track: idx, bar: 0, step: 0, next: c.currentTime + 0.08, hard: want.hard, timer: 0 };
+    S = { c, comp, master, track: idx, bar: 0, step: 0, next: c.currentTime + 0.08, hard: want.hard, rate: want.rate || 1, timer: 0 };
     const tick = () => {
       if (!S || S.c !== c) return;
       while (S.next < c.currentTime + 0.25) {
         const tr = FLAT[S.hard ? 'hard' : 'easy'][S.track];
-        playStep(c, master, tr, S.bar, S.step, S.next);
-        S.next += 60 / tr.bpm / 4;
+        playStep(c, master, tr, S.bar, S.step, S.next, S.rate);
+        S.next += 60 / (tr.bpm * S.rate) / 4;
         if (++S.step === 16) { S.step = 0; if (++S.bar === 16) { S.bar = 0; S.track = (S.track + 1) % 4; } }
       }
     };
@@ -164,12 +164,12 @@
 
   G.music = {
     TRACKS, FLAT,
-    play(hard) { halt(0.2, false); want = { hard: !!hard }; launch(); },
+    play(hard, rate) { halt(0.2, false); want = { hard: !!hard, rate: rate || 1 }; launch(); },
     stop() { want = null; halt(0.3, true); },
     onSound() { if (!G.soundOn) { const w = want; halt(0.15); want = w; } else launch(); },
     setOn(b) { musicOn = !!b; G.store.set(OKEY, musicOn); if (!musicOn) { const w = want; halt(0.2); want = w; } else launch(); },
     isOn: () => musicOn,
-    status: () => (S ? { playing: true, hard: S.hard, track: S.track, name: FLAT[S.hard ? 'hard' : 'easy'][S.track].name, bar: S.bar } : { playing: false, want: !!want }),
+    status: () => (S ? { playing: true, rate: S.rate, hard: S.hard, track: S.track, name: FLAT[S.hard ? 'hard' : 'easy'][S.track].name, bar: S.bar } : { playing: false, want: !!want }),
     // 시험용: 곡 하나를 소리 없이 파일처럼 만들어 본다
     render(hard, track, sr) {
       sr = sr || 22050; const tr = FLAT[hard ? 'hard' : 'easy'][track], secs = (16 * 16 * 60) / tr.bpm / 4 + 1.5;
